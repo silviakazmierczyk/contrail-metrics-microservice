@@ -1,0 +1,12 @@
+analytics:
+    forward_method: kafka
+
+PYTHON_1:
+  BROKER: 'my-cluster-kafka-bootstrap.openshift-operators.svc.cluster.local:9092'
+  PRODUCER: 'contrail-metrics'
+
+logging:
+  level: INFO
+  format: %(asctime)-15s:%(levelname)s:%(module)s:%(message)s
+  use_syslog: False
+  syslog_address: /dev/log
