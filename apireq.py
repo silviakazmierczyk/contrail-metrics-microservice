@@ -1,4 +1,4 @@
-# ULTIMO FUNCIONAL 19.0
+# ULTIMO FUNCIONAL 26.0
 
 import requests
 from kafka import KafkaProducer
@@ -14,13 +14,6 @@ logger = logging.getLogger('contrailmetrics2kafka')
 #Send a get request, get a response object
 url='https://developer.nrel.gov/api/alt-fuel-stations/v1.json?fuel_type=E85,ELEC&state=CA&limit=2&api_key=07vBg1LlPomOR1xvxtW6Rs91MPTtPyO1Ztyzrx9r'
 
-
-#with open("../config.yml", 'r') as ymlfile:
- #   topic_list = yaml.load(ymlfile)
-
-BROKER = 'my-cluster-kafka-bootstrap.openshift-operators.svc.cluster.local:9092'
-PRODUCER_TOPIC = 'contrail-metrics'
-
 #########################################################################################
 # Classes
 #########################################################################################
@@ -32,12 +25,10 @@ class Config(type):
 	c = confuse.Configuration("contrailmetrics2kafka", __name__, read=False)
 	_defaults = {
         'analytics': {
-			'forward_method': "kafka"
+			'forward_method': "kafka",
+            'BROKER_BOOTSTRAP_SERVER': 'my-cluster-kafka-bootstrap.openshift-operators.svc.cluster.local:9092',
+            'PRODUCER_TOPIC': 'contrail-metrics'
 		},
-        'PYTHON_1': {
-            'BROKER': 'my-cluster-kafka-bootstrap.openshift-operators.svc.cluster.local:9092',
-            'PRODUCER': 'contrail-metrics'
-        },
         'logging': {
 			'level': confuse.Choice(choices=["DEBUG", "INFO", "WARNING", "ERROR"], default="INFO"),
 			'formater': "%(asctime)-15s:%(levelname)s:%(name)s:%(funcName)s:%(message)s",
@@ -58,19 +49,28 @@ class Config(type):
 # Functions
 #########################################################################################
 
-#443 ruta
-#svc 9092
 #%%
 def receiveMessage():
     result=requests.get(url).json()
     return result
 #%%
 def sendMessage(result, prod):
+    PRODUCER_TOPIC = Config.c['analytics']['PRODUCER_TOPIC'].get()
+	
     while True:
-        sleep(3)
-        prod.send(PRODUCER_TOPIC, json.dumps(result).encode('utf-8'))
-        print(result)
-        print(prod)
+    	sleep(5)
+    	prod.send(PRODUCER_TOPIC, json.dumps(result).encode('utf-8'))
+    	print(result)
+    	print(prod)
+
+def main_loop():
+	BROKER = Config.c['analytics']['BROKER_BOOTSTRAP_SERVER'].get()
+	
+    
+	prod = KafkaProducer(bootstrap_servers=BROKER)
+	result = receiveMessage()
+	sendMessage(result, prod)
+	
 
 def start_app():
     # Set log defaults
@@ -88,7 +88,7 @@ def start_app():
 		    logger.warning("Environment variable CONTRAILMETRICS2KAFKA_CONFIG should be defined. using file /contrailmetrics2kafka.yml")
 		    config_filename="/contrailmetrics2kafka.yml"
 		else:
-			logger.info(f"Using config file: {config_filename}")
+			logger.info(f"Using config file: {config_filename}") #2021-11-19 14:55:47,292:INFO:contrailmetrics2kafka:start_app:Using config file: /contrailmetrics2kafka.yml
 		if not os.path.exists(config_filename):
 			raise Exception("Configuration file %s does not exists" % config_filename)
 		if not os.path.isfile(config_filename):
@@ -111,11 +111,14 @@ def start_app():
             
     # Define message senders
 	#
-	logger.info("Start")
+	logger.info("Start") #2021-11-19 14:55:47,294:INFO:contrailmetrics2kafka:start_app:Start
 
-	prod = KafkaProducer(bootstrap_servers='my-cluster-kafka-bootstrap.openshift-operators.svc.cluster.local:9092')
-	result = receiveMessage()
-	sendMessage(result, prod)
+	main_loop()  # Loop forever
+
+
+#########################################################################################
+# MAIN
+#########################################################################################
 #%%
 # Initializes the producer object named prod and sends a message to it
 def main(): 
@@ -123,8 +126,6 @@ def main():
 
 if __name__=="__main__":
     #x = sys.argv[1]
-    #y = sys.argv[2]
-    #operation = sys.argv[3]
     main()
 
 

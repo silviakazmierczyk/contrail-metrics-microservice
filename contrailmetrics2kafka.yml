@@ -1,9 +1,7 @@
 analytics:
-    forward_method: kafka
-
-PYTHON_1:
-  BROKER: 'my-cluster-kafka-bootstrap.openshift-operators.svc.cluster.local:9092'
-  PRODUCER: 'contrail-metrics'
+  forward_method: kafka
+  BROKER_BOOTSTRAP_SERVER: 'my-cluster-kafka-bootstrap.openshift-operators.svc.cluster.local:9092'
+  PRODUCER_TOPIC: 'contrail-metrics3'
 
 logging:
   level: INFO
